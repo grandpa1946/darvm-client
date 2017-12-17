@@ -1,0 +1,6 @@
+#!/bin/sh
+
+CLOSURE_COMPILER="/home/calder/bin/ccompiler.jar"
+
+browserify src/main.js -o public_html/yee.js
+java -jar ${CLOSURE_COMPILER} --strict_mode_input=false --jscomp_off=es5Strict --js public_html/yee.js --js_output_file public_html/main.js # make sure the closure compiler is on your path
