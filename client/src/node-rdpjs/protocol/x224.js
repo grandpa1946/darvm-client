@@ -251,72 +251,8 @@ Client.prototype.recvConnectionConfirm = function(s) {
 };
 
 /**
- * Server x224 automata
- */
-function Server(transport, keyFilePath, crtFilePath) {
-	X224.call(this, transport);
-	this.keyFilePath = keyFilePath;
-	this.crtFilePath = crtFilePath;
-	var self = this;
-	this.transport.once('data', function (s) {
-		self.recvConnectionRequest(s);
-	});
-}
-
-//inherit from X224 automata
-inherits(Server, X224);
-
-/**
- * @see http://msdn.microsoft.com/en-us/library/cc240470.aspx
- * @param s {type.Stream}
- */
-Server.prototype.recvConnectionRequest = function (s) {
-	var request = clientConnectionRequestPDU().read(s);
-	if (!request.obj.protocolNeg.isReaded) {
-		throw new Error('NODE_RDP_PROTOCOL_X224_NO_BASIC_SECURITY_LAYER');
-	}
-	
-	this.requestedProtocol = request.obj.protocolNeg.obj.result.value;
-	this.selectedProtocol = this.requestedProtocol & Protocols.PROTOCOL_SSL;
-	
-	if (!(this.selectedProtocol & Protocols.PROTOCOL_SSL)) {
-		var confirm = serverConnectionConfirm();
-		confirm.obj.protocolNeg.obj.type.value = NegociationType.TYPE_RDP_NEG_FAILURE;
-		confirm.obj.protocolNeg.obj.result.value = NegotiationFailureCode.SSL_REQUIRED_BY_SERVER;
-		this.transport.send(confirm);
-		this.close();
-	}
-	else {
-		this.sendConnectionConfirm();
-	}
-};
-
-/**
- * Start SSL connection if needed
- * @see http://msdn.microsoft.com/en-us/library/cc240501.aspx
- */
-Server.prototype.sendConnectionConfirm = function () {
-	var confirm = serverConnectionConfirm();
-	confirm.obj.protocolNeg.obj.type.value = NegotiationType.TYPE_RDP_NEG_RSP;
-	confirm.obj.protocolNeg.obj.result.value = this.selectedProtocol;
-	this.transport.send(confirm);
-	
-	// finish connection sequence
-	var self = this;
-	this.transport.on('data', function(s) {
-		self.recvData(s);
-	});
-	
-	this.transport.transport.listenTLS(this.keyFilePath, this.crtFilePath, function() {
-		log.info('start SSL connection');
-		self.emit('connect', self.requestedProtocol);
-	});
-};
-
-/**
  * Module exports
  */
 module.exports = {
-		Client : Client,
-		Server : Server
+		Client : Client
 };

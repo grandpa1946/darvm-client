@@ -79,10 +79,10 @@ function decompress (bitmap) {
 /**
  * Main RDP module
  */
-function RdpClient(config) {
+function RdpClient(websocket, config) {
 	config = config || {};
 	this.connected = false;
-	this.bufferLayer = new layer.BufferLayer(new net.Socket());
+	this.bufferLayer = new layer.BufferLayer(websocket);
 	this.tpkt = new TPKT(this.bufferLayer);
 	this.x224 = new x224.Client(this.tpkt);
 	this.mcs = new t125.mcs.Client(this.x224);
@@ -186,13 +186,13 @@ inherits(RdpClient, events.EventEmitter);
  * @param host {string} destination host
  * @param port {integer} destination port
  */
-RdpClient.prototype.connect = function (host, port) {
-	log.info('connect to ' + host + ':' + port);
+RdpClient.prototype.connect = function () {
+	log.info('connect');
 	var self = this;
-	this.bufferLayer.socket.connect(port, host, function () {
+	//this.bufferLayer.socket.connect(port, host, function () {
 		// in client mode connection start from x224 layer
 		self.x224.connect();
-	});
+	//});
 	return this;
 };
 
@@ -322,34 +322,10 @@ function createClient(config) {
 	return new RdpClient(config);
 };
 
-/**
- * RDP server side protocol
- * @param config {object} configuration
- * @param socket {net.Socket}
- */
-function RdpServer(config, socket) {
-	if (!(config.key && config.cert)) {
-		throw new error.FatalError('NODE_RDP_PROTOCOL_RDP_SERVER_CONFIG_MISSING', 'missing cryptographic tools')
-	}
-	this.connected = false;
-	this.bufferLayer = new layer.BufferLayer(socket);
-	this.tpkt = new TPKT(this.bufferLayer);
-	this.x224 = new x224.Server(this.tpkt, config.key, config.cert);
-	this.mcs = new t125.mcs.Server(this.x224);
-};
-
-inherits(RdpServer, events.EventEmitter);
-
-function createServer (config, next) {
-	return net.createServer(function (socket) {
-		next(new RdpServer(config, socket));
-	});
-};
 
 /**
  * Module exports
  */
 module.exports = {
-		createClient : createClient,
-		createServer : createServer
+		createClient : createClient
 };

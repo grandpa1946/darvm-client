@@ -1,0 +1,68 @@
+/*
+Copyright (C) 2017 Calder Young
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+html {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    /* optimized for chromebook screen ;> */
+    text-align:center;
+    width:50%;
+    height:300px;
+    margin:auto;
+    position:relative;
+}
+
+footer {
+    position: absolute;
+    left: 0px;
+    right: 0px;
+    bottom: 30px;
+}
+
+.loading{
+    animation: fadeInOut 0.5s ease-in 0s infinite alternate;
+}
+
+.vm_entry_a_h, .vm_entry_b_h{
+    display:none;
+}
+
+.vm_entry:hover .vm_entry_a_h, .vm_entry:hover .vm_entry_b_h{
+    display:inline;
+}
+.vm_entry:hover .vm_entry_a_d, .vm_entry:hover .vm_entry_b_d{
+    display:none;
+}
+
+.vm_entry{
+    cursor: pointer;
+    font: 1.5em monospace;
+    white-space: pre;
+    margin: 3px;
+}
+
+#vm_table{
+    display: inline-block;
+}
+
+@keyframes fadeInOut{
+    from { opacity: 1; transform: scale(1); }
+    to { opacity: 0.6; transform: scale(0.95); }
+}

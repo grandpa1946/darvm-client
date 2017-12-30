@@ -1,10 +1,13 @@
 {
-  "name": "darvm client",
+  "name": "websocket-relay",
   "version": "1.0.0",
   "keywords": [],
   "author": "calder",
   "contributors": [],
   "dependencies": {
-    "jquery": "3.2.1"
+    "ws": "3.3.3"
+  },
+  "scripts": {
+    "start": "node src/main.js"
   }
 }

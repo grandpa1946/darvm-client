@@ -18,17 +18,19 @@
  */
 
 var inherits = require('util').inherits;
-var fs = require('fs');
 var type = require('./type');
-var log = require('./log');
 var events = require('events');
 
 /**
  * Buffer data from socket to present
  * well formed packets
  */
-function BufferLayer(socket) {
-    
+function BufferLayer() {
+	//buffer data
+	this.buffers = [];
+	this.bufferLength = 0;
+	//expected size
+	this.expectedSize = 0;
 }
 
 inherits(BufferLayer, events.EventEmitter);
@@ -38,7 +40,32 @@ inherits(BufferLayer, events.EventEmitter);
  * @param data tcp stream
  */
 BufferLayer.prototype.recv = function(data) {
-    
+	this.buffers[this.buffers.length] = data;
+	this.bufferLength += data.length;
+
+	while(this.bufferLength >= this.expectedSize) {
+		//linear buffer
+		var expectedData = new type.Stream(this.expectedSize);
+
+		//create expected data
+		while(expectedData.availableLength() > 0) {
+
+			var rest = expectedData.availableLength();
+			var buffer = this.buffers.shift();
+
+			if(buffer.length > expectedData.availableLength()) {
+				this.buffers.unshift(buffer.slice(rest));
+				new type.BinaryString(buffer, { readLength : new type.CallableValue(expectedData.availableLength()) }).write(expectedData);
+			}
+			else {
+				new type.BinaryString(buffer).write(expectedData);
+			}
+		}
+
+		this.bufferLength -= this.expectedSize;
+		expectedData.offset = 0;
+		this.emit('data', expectedData);
+	}
 };
 
 /**
@@ -46,7 +73,9 @@ BufferLayer.prototype.recv = function(data) {
  * @param {type.Type} packet
  */
 BufferLayer.prototype.send = function(data) {
-    
+	var s = new type.Stream(data.size());
+	data.write(s);
+	this.socket.send(s.buffer);
 };
 
 /**
@@ -54,33 +83,14 @@ BufferLayer.prototype.send = function(data) {
  * @param {number} expectSize	size expected
  */
 BufferLayer.prototype.expect = function(expectedSize) {
-    
-};
-
-/**
- * Convert connection to TLS connection
- * Use nodejs starttls module
- * @param callback {func} when connection is done
- */
-BufferLayer.prototype.startTLS = function(callback) {
-    
-};
-
-/**
- * Convert connection to TLS server
- * @param keyFilePath	{string} key file path
- * @param crtFilePath	{string} certificat file path
- * @param callback	{function}
- */
-BufferLayer.prototype.listenTLS = function(keyFilePath, crtFilePath, callback) {
-    
+	this.expectedSize = expectedSize;
 };
 
 /**
  * close stack
  */
 BufferLayer.prototype.close = function() {
-    
+	this.socket.close();
 };
 
 /**

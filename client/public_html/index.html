@@ -17,12 +17,71 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <html>
     <head>
-        <title>darvm client you vigg</title>
+        <title>darvm client you yee</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script type="text/javascript" src="main.js"></script>
+        <script type="text/javascript">
+            
+            var credits_links = "\
+		function  dnLicense(){ window.open('https://docs.google.com/document/d/1dB4vpK5eaREeVtLPw3Yo3CHZxjuWwmW7bEA8CcCx6_8/edit?usp=sharing', '_self'); }\
+		function  jqLicense(){ window.open('https://jquery.org/license/', '_self'); }\
+            ";
+    
+            var credits_string = "\
+<h2>DarvyNet Credits</h2>\
+<hr />\
+<p>All Content &copy; 2017 Calder Young, Hayden Dick, Darvy<br /><small>Licensed Under the <a href='javascript:dnLicense()'>DarvyNet Public License 1.6.9</a></small></p>\
+<hr />\
+<h4>Code used in DarvyNet:</h4>\
+<dl>\
+<dt>jQuery</dt>\
+<dd>Copyright 2017 The jQuery Foundation. [<a href='javascript:jqLicense()'>License</a>]</dd>\
+<dt>yeeeeee</dt>\
+<dd>Copyright (C) darvy [<a href='javascript:yee()'>yeeee</a>]</dd>\
+</dl>\
+            ";
+    
+            function credits(){
+		var credits = window.open("", "darvig", "toolbar=no,status=no,resizable=no,top=300,left=300,width=600,height=500");
+		credits.document.write("<html><head><script type='text/javascript'>"+credits_links+"<"+"/script><title>DarvyNet Credits</title></head><body>"+credits_string+"</body></html>");
+            }
+	
+            function help(){
+		var help = window.open("", "yeeg", "toolbar=no,status=no,resizable=no,top=300,left=300,width=300,height=200");
+		help.document.write("<html><head><title>Help</title></head><body><pre>yee</pre></body></html>");
+            }
+            
+        </script>
+        <link rel="stylesheet" type="text/css" href="main.css" />
     </head>
     <body>
-        <p>yeeeeee</p>
+        <h1 style="margin: 10px 0px 0px 0px;">darvm client <sup style="font-size:0.5em;">v1.0</sup></h1>
+	<p style="margin: 0px;">you viener</p>
+	<hr />
+	<div id="login">
+            <div style="display:inline-block;">
+                <code>Server Address:&nbsp;&nbsp;<input type="text" id="ip" value="localhost:42069" style="margin-top: 2px;" /></code><br />
+                <code>&nbsp;&nbsp;Username:&nbsp;&nbsp;<input type="text" id="user" style="margin-top: 10px;" /></code><br />
+                <code>&nbsp;&nbsp;Password:&nbsp;&nbsp;<input type="password" id="pass" /></code><br />
+                <button style="margin-top:7px;" id="connect" disabled>Connect</button>
+            </div>
+            <footer>
+                <hr style="margin: 5px 0px;" />
+                <p style="margin: 3px 0px;"><a href="javascript:credits()">Credits</a> | <a href="javascript:help()">Help</a></p>
+		<hr style="margin: 5px 0px;" />
+            </footer>
+	</div>
+	<div id="loadingscreen" style="display:none;">
+		<h4 class="loading" id="loadingtext">Loading...</h4>
+	</div>
+	<div id="choosevm" style="display:none;">
+		<h3>Choose a VM:</h3>
+                <div id="vmlist">
+                    <table id="vm_table">
+                        <tbody id="vm_entries"></tbody>
+                    </table>
+                </div>
+	</div>
     </body>
 </html>
