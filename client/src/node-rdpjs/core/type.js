@@ -159,6 +159,8 @@ Type.prototype.read = function(s) {
 			throw e;
 		}
 	}
+        
+        console.log(JSON.stringify(this));
 	
 	return this;
 };

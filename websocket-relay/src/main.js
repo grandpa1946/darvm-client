@@ -15,8 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/* global __dirname */
-
 //this is my fist node.js program so don't judge
 
 const WebSocket = require('ws');
@@ -68,7 +66,7 @@ wss.on('connection', function(ws, req) {
     ws.yee = {}; //state information storage
     ws.yee.remote_addr = remote_addr;
     ws.yee.l = ws_log;
-    ws.binaryType = "arraybuffer";
+    ws.binaryType = "nodebuffer";
     ws.isAlive = true;
     ws.on('message', SocketMessage);
     ws.on('close', SocketClosed);
@@ -91,13 +89,19 @@ function ws_log(text){
 
 function SocketClosed(){
     this.yee.l("websocket closed");
+    try{
+        if(!this.yee.socket.connecting){
+            this.yee.socket.end();
+        }
+        this.yee.socket.destroy();
+    }catch(yee){}
 }
 
 function SocketMessage(message){
-    this.yee.l(message);
     try{
         if(this.yee.rdpConnected){
-            
+            this.yee.l("sending: "+message);
+            this.yee.socket.write(message);
         }else{
             var json = JSON.parse(message);
             if(json){
@@ -118,9 +122,23 @@ function SocketMessage(message){
                     if(!(vm = this.yee.vmlist[json.id])) throw 'invalid packet';
                     this.yee.l(this.yee.user+": selecting vm '"+vm.name+"'");
                     var ip_parts = vm.addr.split(":");
+                    const self = this;
                     this.yee.socket.connect(ip_parts[1], ip_parts[0], function(){
-                        this.yee.l(this.yee.user+": connected. switching to binary...");
-                        this.send('{"connected":true}');
+                        self.yee.l(self.yee.user+": connected. switching to binary...");
+                        self.yee.rdpConnected = true;
+                        self.yee.socket.on('data',function(data){
+                            self.yee.l("recieving: "+data);
+                            self.send(data);
+                        });
+                        self.yee.socket.on('close',function(yee){
+                            self.yee.l("closed! on error: "+yee);
+                            self.close();
+                        });
+                        self.send('{"connected":true}');
+                    });
+                    this.yee.socket.on('error', function(err){
+                        self.yee.l("SOCKET ERROR: "+err);
+                        self.close();
                     });
                 }
             }else{
@@ -129,7 +147,23 @@ function SocketMessage(message){
         }
     }catch(yee){
         this.yee.l("ERROR: "+yee);
+        dumpError(yee);
         this.close();
+    }
+}
+
+function dumpError(err) {
+    if (typeof err === 'object') {
+        if (err.message) {
+            console.log('\nMessage: ' + err.message);
+        }
+        if (err.stack) {
+            console.log('\nStacktrace:');
+            console.log('====================');
+            console.log(err.stack);
+        }
+    } else {
+        console.log('dumpError :: argument is not an object');
     }
 }
 

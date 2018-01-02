@@ -89,6 +89,18 @@ function onSocketMessage(event){
         }else{
             if(json.connected){
                 rdpconnected = true;
+                rdp.createClient(sock, { 
+                    decompress : true,
+                    screen : { width : 1280, height : 720 }
+                }).on('connect', function () {
+                    console.log("connect");
+                }).on('close', function() {
+                    console.log("close");
+                }).on('bitmap', function(bitmap) {
+                    console.log("bitmap "+bitmap);
+                }).on('error', function(err) {
+                    console.log("error: "+err);
+                }).connect();
             }
         }
     }

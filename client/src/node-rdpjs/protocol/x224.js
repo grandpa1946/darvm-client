@@ -141,8 +141,8 @@ function x224DataHeader() {
  */
 function X224(transport) {
 	this.transport = transport;
-	this.requestedProtocol = Protocols.PROTOCOL_SSL;
-	this.selectedProtocol = Protocols.PROTOCOL_SSL;
+	this.requestedProtocol = Protocols.PROTOCOL_RDP;
+	this.selectedProtocol = Protocols.PROTOCOL_RDP;
 	
 	var self = this;
 	this.transport.on('close', function() {
@@ -232,6 +232,11 @@ Client.prototype.recvConnectionConfirm = function(s) {
 
 	if(this.selectedProtocol == Protocols.PROTOCOL_RDP) {
 		log.warn("RDP standard security selected");
+		this.emit('connect', this.selectedProtocol);
+                var self = this;
+                this.transport.on('data', function(s) {
+                    self.recvData(s);
+                });
 		return;
 	}
 	

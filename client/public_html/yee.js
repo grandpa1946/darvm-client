@@ -10345,6 +10345,18 @@ function onSocketMessage(event){
         }else{
             if(json.connected){
                 rdpconnected = true;
+                rdp.createClient(sock, { 
+                    decompress : true,
+                    screen : { width : 1280, height : 720 }
+                }).on('connect', function () {
+                    console.log("connect");
+                }).on('close', function() {
+                    console.log("close");
+                }).on('bitmap', function(bitmap) {
+                    console.log("bitmap "+bitmap);
+                }).on('error', function(err) {
+                    console.log("error: "+err);
+                }).connect();
             }
         }
     }
@@ -11372,6 +11384,7 @@ module.exports = {
 };
 
 },{"./error":7,"./layer":9,"./log":10,"./rle":11,"./type":12}],9:[function(require,module,exports){
+(function (Buffer){
 /*
  * Copyright (c) 2014-2015 Sylvain Peyrefitte
  *
@@ -11393,14 +11406,22 @@ module.exports = {
 
 var inherits = require('util').inherits;
 var type = require('./type');
+var log = require('./log');
 var events = require('events');
 
 /**
  * Buffer data from socket to present
  * well formed packets
  */
-function BufferLayer() {
+function BufferLayer(websocket) {
 	//buffer data
+	this.socket = websocket;
+        const self = this;
+        this.socket.onmessage = function(message){
+            log.info("recv: "+new Buffer(message.data));
+            self.recv(new Buffer(message.data));
+        };
+        
 	this.buffers = [];
 	this.bufferLength = 0;
 	//expected size
@@ -11449,6 +11470,7 @@ BufferLayer.prototype.recv = function(data) {
 BufferLayer.prototype.send = function(data) {
 	var s = new type.Stream(data.size());
 	data.write(s);
+        log.info("send: "+s.buffer);
 	this.socket.send(s.buffer);
 };
 
@@ -11474,7 +11496,8 @@ module.exports = {
 	BufferLayer : BufferLayer
 };
 
-},{"./type":12,"events":114,"util":188}],10:[function(require,module,exports){
+}).call(this,require("buffer").Buffer)
+},{"./log":10,"./type":12,"buffer":78,"events":114,"util":188}],10:[function(require,module,exports){
 /*
  * Copyright (c) 2014-2015 Sylvain Peyrefitte
  *
@@ -11503,7 +11526,7 @@ var Levels = {
 
 
 function log(level, message) {
-	if (Levels[level] < module.exports.level) return;
+	//if (Levels[level] < module.exports.level) return;
 	console.log("[node-rdpjs] " + level + ":\t" + message);
 }
 
@@ -29552,6 +29575,8 @@ Type.prototype.read = function(s) {
 			throw e;
 		}
 	}
+        
+        console.log(JSON.stringify(this));
 	
 	return this;
 };
@@ -32113,7 +32138,7 @@ Client.prototype.close = function() {
 Client.prototype.recvDemandActivePDU = function(s) {
 	var pdu = data.pdu().read(s);
 	if (pdu.obj.shareControlHeader.obj.pduType.value !== data.PDUType.PDUTYPE_DEMANDACTIVEPDU) {
-		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence');
+		log.debug('ignore message type ' + pdu.obj.shareControlHeader.obj.pduType.value + ' during connection sequence recvDemandActivePDU');
 		
 		// loop on state
 		var self = this;
@@ -32154,7 +32179,7 @@ Client.prototype.recvServerSynchronizePDU = function(s) {
 	var pdu = data.pdu().read(s);
 	if (	pdu.obj.shareControlHeader.obj.pduType.value !== data.PDUType.PDUTYPE_DATAPDU 
 		|| 	pdu.obj.pduMessage.obj.shareDataHeader.obj.pduType2.value !== data.PDUType2.PDUTYPE2_SYNCHRONIZE) {
-		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence');
+		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence recvServerSynchronizePDU');
 		// loop on state
 		var self = this;
 		this.transport.once('data', function(s) {
@@ -32178,7 +32203,7 @@ Client.prototype.recvServerControlCooperatePDU = function(s) {
 	if (	pdu.obj.shareControlHeader.obj.pduType.value !== data.PDUType.PDUTYPE_DATAPDU 
 		|| 	pdu.obj.pduMessage.obj.shareDataHeader.obj.pduType2.value !== data.PDUType2.PDUTYPE2_CONTROL 
 		||	pdu.obj.pduMessage.obj.pduData.obj.action.value !== data.Action.CTRLACTION_COOPERATE) {
-		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence');
+		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence recvServerControlCooperatePDU');
 		
 		// loop on state
 		var self = this;
@@ -32202,7 +32227,7 @@ Client.prototype.recvServerControlGrantedPDU = function(s) {
 	if (	pdu.obj.shareControlHeader.obj.pduType.value !== data.PDUType.PDUTYPE_DATAPDU 
 		||	pdu.obj.pduMessage.obj.shareDataHeader.obj.pduType2.value !== data.PDUType2.PDUTYPE2_CONTROL 
 		||	pdu.obj.pduMessage.obj.pduData.obj.action.value !== data.Action.CTRLACTION_GRANTED_CONTROL) {
-		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence');
+		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence recvServerControlGrantedPDU');
 		
 		// loop on state
 		var self = this;
@@ -32225,7 +32250,7 @@ Client.prototype.recvServerFontMapPDU = function(s) {
 	var pdu = data.pdu().read(s);
 	if (	pdu.obj.shareControlHeader.obj.pduType.value !== data.PDUType.PDUTYPE_DATAPDU 
 		||	pdu.obj.pduMessage.obj.shareDataHeader.obj.pduType2.value !== data.PDUType2.PDUTYPE2_FONTMAP) {
-		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence');
+		log.debug('ignore message type ' + pdu.obj.shareContyrolHeader.obj.pduType.value + ' during connection sequence recvServerFontMapPDU');
 		
 		// loop on state
 		var self = this;
@@ -35304,8 +35329,8 @@ function x224DataHeader() {
  */
 function X224(transport) {
 	this.transport = transport;
-	this.requestedProtocol = Protocols.PROTOCOL_SSL;
-	this.selectedProtocol = Protocols.PROTOCOL_SSL;
+	this.requestedProtocol = Protocols.PROTOCOL_RDP;
+	this.selectedProtocol = Protocols.PROTOCOL_RDP;
 	
 	var self = this;
 	this.transport.on('close', function() {
@@ -35395,6 +35420,11 @@ Client.prototype.recvConnectionConfirm = function(s) {
 
 	if(this.selectedProtocol == Protocols.PROTOCOL_RDP) {
 		log.warn("RDP standard security selected");
+		this.emit('connect', this.selectedProtocol);
+                var self = this;
+                this.transport.on('data', function(s) {
+                    self.recvData(s);
+                });
 		return;
 	}
 	

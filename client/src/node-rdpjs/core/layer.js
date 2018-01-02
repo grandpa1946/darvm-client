@@ -19,14 +19,22 @@
 
 var inherits = require('util').inherits;
 var type = require('./type');
+var log = require('./log');
 var events = require('events');
 
 /**
  * Buffer data from socket to present
  * well formed packets
  */
-function BufferLayer() {
+function BufferLayer(websocket) {
 	//buffer data
+	this.socket = websocket;
+        const self = this;
+        this.socket.onmessage = function(message){
+            log.info("recv: "+new Buffer(message.data));
+            self.recv(new Buffer(message.data));
+        };
+        
 	this.buffers = [];
 	this.bufferLength = 0;
 	//expected size
@@ -75,6 +83,7 @@ BufferLayer.prototype.recv = function(data) {
 BufferLayer.prototype.send = function(data) {
 	var s = new type.Stream(data.size());
 	data.write(s);
+        log.info("send: "+s.buffer);
 	this.socket.send(s.buffer);
 };
 

@@ -1,14 +1,14 @@
 {
 	"darvy":[
-		{"name":"Windows 10",   "addr":"localhost:69425"},
-		{"name":"Ubuntu 16.04", "addr":"localhost:69426"}
+		{"name":"Windows 10",   "addr":"192.168.0.70:691"},
+		{"name":"Ubuntu 16.04", "addr":"192.168.0.79:3389"}
 	],
 	
 	"deevy":[
-		{"name":"macOS 10.69",  "addr":"localhost:69427"}
+		{"name":"macOS 10.69",  "addr":"localhost:693"}
 	],
 
 	"darve":[
-		{"name":"Windows 7",    "addr":"localhost:69428"}
+		{"name":"Windows 7",    "addr":"localhost:694"}
 	]
 }

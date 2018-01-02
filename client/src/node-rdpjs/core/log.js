@@ -26,7 +26,7 @@ var Levels = {
 
 
 function log(level, message) {
-	if (Levels[level] < module.exports.level) return;
+	//if (Levels[level] < module.exports.level) return;
 	console.log("[node-rdpjs] " + level + ":\t" + message);
 }
 
