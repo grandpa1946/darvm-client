@@ -41,8 +41,8 @@ public class ScreenCapture {
     public static BufferedImage bufferB = null;
     public static final ImageWriter JPEGWriter;
     public static final JPEGImageWriteParam JPEGWriterParams;
-    public static final Rectangle screen = //new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-                                           new Rectangle(0,0,800,600); //benchmarking
+    public static final Rectangle screen = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+                                           //new Rectangle(0,0,800,600); //benchmarking
     
     static{
         JPEGWriter = ImageIO.getImageWritersByFormatName("jpg").next();
