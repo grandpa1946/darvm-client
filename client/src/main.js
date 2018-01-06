@@ -15,10 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-var crypto = require('crypto');
-var rdp = require('./node-rdpjs');
-var $   = require('jquery');
-
 var authenticated = false;
 
 var sock = null;
@@ -58,11 +54,10 @@ function testValidConnect(){
 
 function onSocketConnect(){
     loadtext.text("authenticating...");
-    var hash = crypto.createHash('sha256');
-    hash.update("#$%#yeeLer#^#^$^GFD"+$("#pass").val().trim()+"YEE69%#$#@1"); //yes I know it's vulnerable to man in the middle attacks
+    const sha_digest = sha256("#$%#yeeLer#^#^$^GFD"+$("#pass").val().trim()+"YEE69%#$#@1"); //yes I know it's vulnerable to man in the middle attacks
     sock.send(JSON.stringify({
         username:($("#user").val().trim()),
-        password:(hash.digest('hex'))
+        password:(sha_digest)
     }));
 }
 
@@ -89,18 +84,7 @@ function onSocketMessage(event){
         }else{
             if(json.connected){
                 rdpconnected = true;
-                rdp.createClient(sock, { 
-                    decompress : true,
-                    screen : { width : 1280, height : 720 }
-                }).on('connect', function () {
-                    console.log("connect");
-                }).on('close', function() {
-                    console.log("close");
-                }).on('bitmap', function(bitmap) {
-                    console.log("bitmap "+bitmap);
-                }).on('error', function(err) {
-                    console.log("error: "+err);
-                }).connect();
+                
             }
         }
     }
