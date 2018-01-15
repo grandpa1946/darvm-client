@@ -16,31 +16,15 @@
  */
 package lax1dude.darvm.server;
 
+import java.io.OutputStream;
+
 /**
  *
  * @author calder
  */
-public class Benchmarking {
+public class FragmentedOutputLayer {
     
-    
-    public static void main(String[] args) throws Throwable {
-        
-        ScreenCapture.getScreenSize();
-        ScreenCapture.captureScreen();
-        ScreenCapture.getFullUpdate();
-        
-        while(true){
-            long time = System.currentTimeMillis();
-            int frames = 0;
-            while(System.currentTimeMillis() - time < 1000L){
-                ScreenCapture.captureScreen();
-                byte[] data = ScreenCapture.getUpdatedPixels();
-                if(data != null) System.out.println("     " + Integer.toString(data.length));
-                frames += 1;
-            }
-            System.out.println(frames);
-        }
+    public FragmentedOutputLayer(OutputStream out){
         
     }
-    
 }

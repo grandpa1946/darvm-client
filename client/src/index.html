@@ -83,12 +83,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		<h4 class="loading" id="loadingtext">Loading...</h4>
 	</div>
 	<div id="choosevm" style="display:none;">
-		<h3>Choose a VM:</h3>
-                <div id="vmlist">
-                    <table id="vm_table">
-                        <tbody id="vm_entries"></tbody>
-                    </table>
-                </div>
+            <h3>Choose a VM:</h3>
+            <div id="vmlist">
+                <table id="vm_table">
+                    <tbody id="vm_entries"></tbody>
+                </table>
+            </div>
+	</div>
+	<div id="main" style="display:none;">
+            <p>press RCTRL to preform a full screen refresh and RSHIFT to use 1-9, 0, -, = as function keys</p>
+            <p>this text is not visible in fullscreen mode</p>
+            <canvas id="vmcanvas" width="1024" height="768"></canvas>
+            <p><button id="disconnect">disconnect</button></p>
 	</div>
     </body>
 </html>

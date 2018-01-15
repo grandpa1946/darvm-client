@@ -41,8 +41,7 @@ public class ScreenCapture {
     public static BufferedImage bufferB = null;
     public static final ImageWriter JPEGWriter;
     public static final JPEGImageWriteParam JPEGWriterParams;
-    public static final Rectangle screen = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-                                           //new Rectangle(0,0,800,600); //benchmarking
+    public static Rectangle screen = null;
     
     static{
         JPEGWriter = ImageIO.getImageWritersByFormatName("jpg").next();
@@ -53,8 +52,26 @@ public class ScreenCapture {
         JPEGWriterParams.setCompressionQuality(0.15f);
     }
 
+    public static byte[] getScreenSize() {
+        screen = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+                 //new Rectangle(0,0,1024,768); //benchmarking
+        byte[] sizedata = new byte[8];
+        byte[] w = EncodingUtils.intToBytes(screen.width);
+        byte[] h = EncodingUtils.intToBytes(screen.height);
+        sizedata[0] = w[0];
+        sizedata[1] = w[1];
+        sizedata[2] = w[2];
+        sizedata[3] = w[3];
+        sizedata[4] = h[0];
+        sizedata[5] = h[1];
+        sizedata[6] = h[2];
+        sizedata[7] = h[3];
+        return sizedata;
+    }
+    
     public static void captureScreen() {
-        bufferA = DarVMServer.ROBOT.createScreenCapture(screen);
+        //bufferA = ThreadedScreenshotSystem.captureThreadedScreenshot(screen.width, screen.height);
+        bufferA = DarVMServer.robot.createScreenCapture(screen);
     }
     
     public static BufferedImage cloneBuffer(BufferedImage buffer){

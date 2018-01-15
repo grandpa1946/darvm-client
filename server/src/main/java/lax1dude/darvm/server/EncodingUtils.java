@@ -30,4 +30,8 @@ public class EncodingUtils {
             (byte)value};
     }
     
+    public static int bytesToInt(byte[] in) {
+        return (in[0] << 24) | (in[1] << 16) | (in[2] << 8) | (in[3]);
+    }
+    
 }
