@@ -1,7 +1,7 @@
 {
 	"darvy":[
 		{"name":"Windows 10",   "addr":"localhost:42059"},
-		{"name":"Ubuntu 16.04", "addr":"localhost:yee"}
+		{"name":"Ubuntu 16.04", "addr":"192.168.0.70:42059"}
 	],
 	
 	"deevy":[

@@ -18,6 +18,7 @@ package lax1dude.darvm.server;
 
 import java.awt.Robot;
 import java.awt.event.InputEvent;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,6 +26,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  *
@@ -53,14 +55,14 @@ public class DarVMServer {
     private static final AtomicLong lastPing = new AtomicLong(0L);
     private static Socket sockster = null;
     
-    public static final Robot robot;
+    public static final DirectRobot robot;
     
     static{
         
-        Robot yee = null;
+        DirectRobot yee = null;
         
         try{
-            yee = new Robot();
+            yee = new DirectRobot();
         }catch(Throwable t){
             t.printStackTrace();
         }
@@ -73,7 +75,7 @@ public class DarVMServer {
         System.out.println("[darvm server] "+t);
     }
     
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         
         l("starting...");
         
@@ -90,8 +92,7 @@ public class DarVMServer {
                                     sockster.close();
                                     break;
                                 }
-                                writer.write(DARVM_PACKET_PING);
-                                writer.flush();
+                                FragmentationLayer.sendPacket(writer, new byte[]{DARVM_PACKET_PING});
                             }catch(IOException e){
                                 e.printStackTrace();
                                 sockster.close();
@@ -116,15 +117,13 @@ public class DarVMServer {
                             synchronized(ScreenCapture.class){
                                 ScreenCapture.captureScreen();
                                 byte[] updates = ScreenCapture.getUpdatedPixels();
-                                OutputStream writer = sockster.getOutputStream();
-                                synchronized(writer){
-                                    ByteArrayOutputStream s = new ByteArrayOutputStream();
-                                    s.write(DARVM_PACKET_SCREEN_UPDATES);
-                                    s.write(updates);
-                                    s.close();
-                                    writer.write(s.toByteArray());
-                                    writer.flush();
-                                    l("sent DARVM_PACKET_SCREEN_UPDATES");
+                                if(updates != null){
+                                    OutputStream writer = sockster.getOutputStream();
+                                    l("update size: "+updates.length);
+                                    synchronized(writer){
+                                        FragmentationLayer.sendPacket(writer, ArrayUtils.add(updates, 0, (byte)DARVM_PACKET_SCREEN_UPDATES));
+                                        l("sent DARVM_PACKET_SCREEN_UPDATES");
+                                    }
                                 }
                             }
                         }catch(IOException e){
@@ -148,44 +147,38 @@ public class DarVMServer {
         
         while (true) {
             sockster = server.accept();
-            l("recieving connection from "+sockster.getRemoteSocketAddress().toString());
-            lastPing.set(System.currentTimeMillis());
-            try{
-                InputStream  reader = sockster.getInputStream();
-                OutputStream writer = sockster.getOutputStream();
-                
-                synchronized(writer){
-                    ByteArrayOutputStream s = new ByteArrayOutputStream();
-                    s.write(DARVM_PACKET_STREAM_INFORMATION);
-                    s.write(ScreenCapture.getScreenSize());
-                    s.close();
-                    writer.write(s.toByteArray());
-                    writer.flush();
-                    l("sent DARVM_PACKET_STREAM_INFORMATION");
-                }
-                
-                ScreenCapture.captureScreen();
-                byte[] updates = ScreenCapture.getFullUpdate();
-                
-                synchronized(writer){
-                    ByteArrayOutputStream s = new ByteArrayOutputStream();
-                    s.write(DARVM_PACKET_FULL_SCREEN_UPDATE);
-                    s.write(EncodingUtils.intToBytes(updates.length));
-                    s.write(updates);
-                    s.close();
-                    writer.write(s.toByteArray());
-                    writer.flush();
-                    l("sent DARVM_PACKET_FULL_SCREEN_UPDATE");
-                }
-                
-                while(true){
-                    if(reader.available() > 0){
+            Thread handler = new Thread(() -> {
+                l("recieving connection from "+sockster.getRemoteSocketAddress().toString());
+                lastPing.set(System.currentTimeMillis());
+                try{
+                    InputStream reader1 = sockster.getInputStream();
+                    OutputStream writer = sockster.getOutputStream();
+
+                    synchronized(writer){
+                        FragmentationLayer.sendPacket(writer, ArrayUtils.add(ScreenCapture.getScreenSize(), 0, (byte)DARVM_PACKET_STREAM_INFORMATION));
+                        l("sent DARVM_PACKET_STREAM_INFORMATION");
+                    }
+
+                    ScreenCapture.captureScreen();
+                    byte[] updates = ScreenCapture.getFullUpdate();
+
+                    synchronized(writer){
+                        ByteArrayOutputStream s = new ByteArrayOutputStream();
+                        s.write(DARVM_PACKET_FULL_SCREEN_UPDATE);
+                        s.write(EncodingUtils.intToBytes(updates.length));
+                        s.write(updates);
+                        s.close();
+                        FragmentationLayer.sendPacket(writer, s.toByteArray());
+                        l("sent DARVM_PACKET_FULL_SCREEN_UPDATE");
+                    }
+
+                    while(true){
+                        ByteArrayInputStream reader = new ByteArrayInputStream(FragmentationLayer.recievePacket(reader1));
                         int packettype = reader.read();
                         switch(packettype){
                             case DARVM_PACKET_PING:
                                 synchronized(writer){
-                                    writer.write(DARVM_PACKET_PONG);
-                                    writer.flush();
+                                    FragmentationLayer.sendPacket(writer, new byte[]{DARVM_PACKET_PONG});
                                     l("sent DARVM_PACKET_PONG");
                                 }
                                 break;
@@ -204,8 +197,7 @@ public class DarVMServer {
                                         s.write(EncodingUtils.intToBytes(updates2.length));
                                         s.write(updates2);
                                         s.close();
-                                        writer.write(s.toByteArray());
-                                        writer.flush();
+                                        FragmentationLayer.sendPacket(writer, s.toByteArray());
                                         l("sent DARVM_PACKET_FULL_SCREEN_UPDATE");
                                     }
                                 }
@@ -217,39 +209,50 @@ public class DarVMServer {
                                 reader.read(y);
                                 int ix = EncodingUtils.bytesToInt(x);
                                 int iy = EncodingUtils.bytesToInt(y);
+                                l("recieved DARVM_PACKET_MOUSE_SET_POSITION "+ix+" "+iy);
                                 robot.mouseMove(ix, iy);
                                 break;
                             case DARVM_PACKET_MOUSE_LEFT_DOWN:
+                                l("recieved DARVM_PACKET_MOUSE_LEFT_DOWN");
                                 robot.mousePress(InputEvent.BUTTON1_MASK);
                                 break;
                             case DARVM_PACKET_MOUSE_LEFT_UP:
+                                l("recieved DARVM_PACKET_MOUSE_LEFT_UP");
                                 robot.mouseRelease(InputEvent.BUTTON1_MASK);
                                 break;
                             case DARVM_PACKET_MOUSE_MIDDLE_DOWN:
+                                l("recieved DARVM_PACKET_MOUSE_MIDDLE_DOWN");
                                 robot.mousePress(InputEvent.BUTTON3_MASK);
                                 break;
                             case DARVM_PACKET_MOUSE_MIDDLE_UP:
+                                l("recieved DARVM_PACKET_MOUSE_MIDDLE_UP");
                                 robot.mouseRelease(InputEvent.BUTTON3_MASK);
                                 break;
                             case DARVM_PACKET_MOUSE_RIGHT_DOWN:
+                                l("recieved DARVM_PACKET_MOUSE_RIGHT_DOWN");
                                 robot.mousePress(InputEvent.BUTTON2_MASK);
                                 break;
                             case DARVM_PACKET_MOUSE_RIGHT_UP:
+                                l("recieved DARVM_PACKET_MOUSE_RIGHT_UP");
                                 robot.mouseRelease(InputEvent.BUTTON2_MASK);
                                 break;
                             case DARVM_PACKET_MOUSE_SCROLL_DOWN:
+                                l("recieved DARVM_PACKET_MOUSE_SCROLL_DOWN");
                                 robot.mouseWheel(-1);
                                 break;
                             case DARVM_PACKET_MOUSE_SCROLL_UP:
+                                l("recieved DARVM_PACKET_MOUSE_SCROLL_UP");
                                 robot.mouseWheel(1);
                                 break;
                             case DARVM_PACKET_KEYBOARD_KEY_DOWN:
+                                l("recieved DARVM_PACKET_KEYBOARD_KEY_DOWN");
                                 byte[] key = new byte[4];
                                 reader.read(key);
                                 int key2 = EncodingUtils.bytesToInt(key);
                                 robot.keyPress(key2);
                                 break;
                             case DARVM_PACKET_KEYBOARD_KEY_UP:
+                                l("recieved DARVM_PACKET_KEYBOARD_KEY_UP");
                                 byte[] key3 = new byte[4];
                                 reader.read(key3);
                                 int key4 = EncodingUtils.bytesToInt(key3);
@@ -258,28 +261,35 @@ public class DarVMServer {
                             default:
                                 break;
                         }
-                        
+
                         if(sockster.isClosed()){
                             break;
                         }
-                        
+
                     }
-                    
-                    if(sockster.isClosed()){
-                        continue;
+
+                    l("connection closed");
+
+                }catch(IOException yee){
+                    yee.printStackTrace();
+                    try{
+                        sockster.close();
+                    }catch(IOException yee2){
+                        yee2.printStackTrace();
                     }
-                    
+                    return;
                 }
-                
-                l("connection closed");
-                
-            }catch(IOException yee){
-                yee.printStackTrace();
-                try{
-                    sockster.close();
-                }catch(IOException yee2){
-                    yee2.printStackTrace();
-                }
+            }, "connection handler");
+            
+            handler.setDaemon(true);
+            handler.start();
+            
+            while(!(sockster.isClosed() || !handler.isAlive())){
+                Thread.sleep(1000L);
+            }
+            
+            if(handler.isAlive()){
+                handler.stop();
             }
         }
     }

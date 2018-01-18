@@ -100,7 +100,7 @@ function SocketClosed(){
 function SocketMessage(message){
     try{
         if(this.yee.rdpConnected){
-            this.yee.l("sending: "+message);
+            //this.yee.l("sending: "+message);
             this.yee.socket.write(message);
         }else{
             var json = JSON.parse(message);
@@ -123,18 +123,18 @@ function SocketMessage(message){
                     this.yee.l(this.yee.user+": selecting vm '"+vm.name+"'");
                     var ip_parts = vm.addr.split(":");
                     const self = this;
+                    self.yee.rdpConnected = true;
                     this.yee.socket.connect(ip_parts[1], ip_parts[0], function(){
                         self.yee.l(self.yee.user+": connected. switching to binary...");
-                        self.yee.rdpConnected = true;
+                        self.send('{"connected":true}');
                         self.yee.socket.on('data',function(data){
-                            self.yee.l("recieving: "+data);
+                            //self.yee.l("recieving: "+data);
                             self.send(data);
                         });
                         self.yee.socket.on('close',function(yee){
                             self.yee.l("closed! on error: "+yee);
                             self.close();
                         });
-                        self.send('{"connected":true}');
                     });
                     this.yee.socket.on('error', function(err){
                         self.yee.l("SOCKET ERROR: "+err);

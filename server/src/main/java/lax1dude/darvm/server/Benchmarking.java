@@ -25,6 +25,12 @@ public class Benchmarking {
     
     public static void main(String[] args) throws Throwable {
         
+        byte[] yigg = EncodingUtils.intToBytes(765);
+        for(int i = 0; i < yigg.length; i++){
+            System.out.println((int)yigg[i]);
+        }
+        System.out.println(EncodingUtils.bytesToInt(EncodingUtils.intToBytes(765)));
+        
         ScreenCapture.getScreenSize();
         ScreenCapture.captureScreen();
         ScreenCapture.getFullUpdate();
@@ -34,8 +40,8 @@ public class Benchmarking {
             int frames = 0;
             while(System.currentTimeMillis() - time < 1000L){
                 ScreenCapture.captureScreen();
-                byte[] data = ScreenCapture.getUpdatedPixels();
-                if(data != null) System.out.println("     " + Integer.toString(data.length));
+                //byte[] data = ScreenCapture.getUpdatedPixels();
+                //if(data != null) System.out.println("     " + Integer.toString(data.length));
                 frames += 1;
             }
             System.out.println(frames);

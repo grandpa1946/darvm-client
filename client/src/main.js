@@ -34,8 +34,59 @@ $(function(){
     $("#user").keydown(testValidConnect);
     $("#pass").keydown(testValidConnect);
     
-    screenCanvas = $("#vmcanvas")[0];
+    var canvile = $("#vmcanvas");
+    screenCanvas = canvile[0];
     preCanvas = document.createElement("canvas");
+    
+    canvile.on('mousedown',function(event){
+        switch(event.button){
+            case 0:
+                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_LEFT_DOWN]));
+                break;
+            case 2:
+                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_MIDDLE_DOWN]));
+                break;
+            case 1:
+                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_DOWN]));
+                break;
+        }
+    });
+    
+    canvile.on('mouseup',function(event){
+        switch(event.button){
+            case 0:
+                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_LEFT_UP]));
+                break;
+            case 2:
+                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_MIDDLE_UP]));
+                break;
+            case 1:
+                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_UP]));
+                break;
+        }
+    });
+    
+    canvile.on('contextmenu',function(){return false;});
+    
+    canvile.on('mousemove',function(event){
+        SendPacket(array8Concat2(new Uint8Array([DARVM_PACKET_MOUSE_SET_POSITION]), array8Concat2(intToBytes(event.offsetX|0), intToBytes(event.offsetY|0))));
+    });
+    
+    canvile.on('mousewheel',function(event){
+        if(event.wheelDelta > 0){
+            SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_SCROLL_UP]));
+        }else if(event.wheelDelta < 0){
+            SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_SCROLL_DOWN]));
+        }
+    });
+    
+    $(document).on('keydown',function(event){
+        SendPacket(array8Concat2(new Uint8Array([DARVM_PACKET_KEYBOARD_KEY_DOWN]), intToBytes(event.code)));
+    });
+    
+    $(document).on('keyup',function(event){
+        SendPacket(array8Concat2(new Uint8Array([DARVM_PACKET_KEYBOARD_KEY_UP]), intToBytes(event.code)));
+    });
     
     screenCanvasContext = screenCanvas.getContext("2d");
     preCanvasContext = preCanvas.getContext("2d");
@@ -84,12 +135,16 @@ function JavaPacketReader(array){
 }
 
 JavaPacketReader.prototype.readByte = function(){
-    if(this.array.length < 1) throw 'array out of bounds';
+    if(this.array.length - this.cursorindex < 1) throw 'array out of bounds';
     return this.array[this.cursorindex++];
 };
 
+JavaPacketReader.prototype.available = function(){
+    return this.array.length - this.cursorindex;
+};
+
 JavaPacketReader.prototype.readBytes = function(outarray){
-    if(this.array.length < outarray.length) throw 'array out of bounds';
+    if(this.array.length - this.cursorindex < outarray.length) throw 'array out of bounds';
     for(var i = 0; i < outarray.length; i++){
         outarray[i] = this.array[this.cursorindex++];
     }
@@ -106,7 +161,7 @@ JavaPacketReader.prototype.readRemainingBytes = function(){
 
 function onSocketMessage(event){
     if(rdpconnected){
-        handleRdpPacket(new JavaPacketReader(new Uint8Array(event.data)));
+        DefragPacket(new Uint8Array(event.data));
     }else{
         var json = JSON.parse(event.data);
         if(!authenticated){ //recieve vm list
@@ -153,6 +208,9 @@ function onSocketDisconnect(event){
     address = null;
     rdpconnected = false;
     authenticated = false;
+    arrivingBuffer = new Uint8Array(0);
+    packetBuffer = new Uint8Array(0);
+    packetFinalLength = -1;
     $("#choosevm").hide();
     $("#loadingscreen").hide();
     $("#main").hide();
@@ -163,7 +221,8 @@ var lastping = 0;
 
 setInterval(function(){
     if(rdpconnected){
-        if((new Date()).getTime() > 15000){
+        SendPacket(new Uint8Array([DARVM_PACKET_PING]));
+        if(lastping - (new Date()).getTime() > 15000){
             console.log("timed out");
             sock.close();
         }
@@ -192,6 +251,15 @@ function bytesToInt(yigg) {
     return (yigg[0] << 24) | (yigg[1] << 16) | (yigg[2] << 8) | (yigg[3]);
 }
 
+function intToBytes(value) {
+    return new Uint8Array([
+        (value >> 24 & 255),
+        (value >> 16 & 255),
+        (value >> 8 & 255),
+        (value & 255)
+    ]);
+}
+
 var screen_width = 1024;
 var screen_height = 768;
 
@@ -202,15 +270,13 @@ function loadImage(bytes, load){
     
 }
 
-const bitmasks = [1,2,4,8,16,32,64,128,256]
-
 function handleRdpPacket(packet){
     try{
         var packettype = packet.readByte();
         switch(packettype){
             case DARVM_PACKET_PING:
                 console.log("recieved DARVM_PACKET_PING");
-                sock.send(new Uint8Array([DARVM_PACKET_PONG]).buffer);
+                SendPacket(new Uint8Array([DARVM_PACKET_PONG]));
                 break;
             case DARVM_PACKET_PONG:
                 console.log("recieved DARVM_PACKET_PONG");
@@ -227,22 +293,17 @@ function handleRdpPacket(packet){
                 break;
             case DARVM_PACKET_SCREEN_UPDATES:
                 console.log("recieved DARVM_PACKET_SCREEN_UPDATES");
-                var packet2 = new JavaPacketReader(pako.inflate(packet.readRemainingBytes()));
-                var len = bytesToInt(packet2.readBytes(new Uint8Array(4)));
-                var data = packet2.readBytes(new Uint8Array(len));
-                var len2 = bytesToInt(packet2.readBytes(new Uint8Array(4)));
-                var data2 = packet2.readBytes(new Uint8Array(len2));
-                loadImage(data2, function(){
-                    preCanvasContext.drawImage(this,0,0);
-                    for(var x = 0; x < screen_width; x++){
-                        for (var y = 0; y < screen_height; y++) {
-                            var pixelIndex = (x * h + y);
-                            if(data[pixelIndex / 8] & bitmasks[pixelIndex % 8] != 0){
-                                screenCanvasContext.putImageData(preCanvasContext.getImageData(x, y, 1, 1), x, y);
-                            }
-                        }
-                    }
-                });
+                var packet2 = packet; //new JavaPacketReader(pako.inflate(packet.readRemainingBytes()));
+                var segments = bytesToInt(packet2.readBytes(new Uint8Array(4)));
+                for(var i = 0; i < segments; i++){
+                    const x = bytesToInt(packet2.readBytes(new Uint8Array(4)));
+                    const y = bytesToInt(packet2.readBytes(new Uint8Array(4)));
+                    var len = bytesToInt(packet2.readBytes(new Uint8Array(4)));
+                    var data = packet2.readBytes(new Uint8Array(len));
+                    loadImage(data, function(){
+                        screenCanvasContext.drawImage(this,x,y);
+                    });
+                }
                 break;
             case DARVM_PACKET_FULL_SCREEN_UPDATE:
                 console.log("recieved DARVM_PACKET_FULL_SCREEN_UPDATE");
@@ -259,4 +320,85 @@ function handleRdpPacket(packet){
         console.log(e);
         sock.close();
     }
+}
+
+var arrivingBuffer = new Uint8Array(0);
+
+var packetBuffer = new Uint8Array(0);
+var packetFinalLength = -1;
+
+function DefragPacket(data){ //makes sure the length header is always full
+    if(packetFinalLength == -1){
+        arrivingBuffer = array8Concat2(arrivingBuffer, data);
+        if(arrivingBuffer.length > 4){
+            var tmp = arrivingBuffer.slice(0);
+            arrivingBuffer = new Uint8Array(0);
+            DefragFullPacket(new JavaPacketReader(tmp));
+        }
+    }else{
+        DefragFullPacket(new JavaPacketReader(data));
+    }
+}
+
+function DefragFullPacket(data){
+    if(packetFinalLength == -1){
+        packetFinalLength = bytesToInt(data.readBytes(new Uint8Array(4)));
+    }
+    
+    var deev = packetBuffer.length + data.available();
+    
+    if(deev < packetFinalLength){
+        packetBuffer = array8Concat2(packetBuffer, data.readRemainingBytes());
+        return;
+    }
+    
+    if(deev == packetFinalLength){
+        packetBuffer = array8Concat2(packetBuffer, data.readRemainingBytes());
+        handleRdpPacket(new JavaPacketReader(packetBuffer.slice(0)));
+        packetBuffer = new Uint8Array(0);
+        packetFinalLength = -1;
+        return;
+    }
+    
+    if(deev > packetFinalLength){
+        packetBuffer = array8Concat2(packetBuffer, data.readBytes(new Uint8Array(packetFinalLength - packetBuffer.length)));
+        handleRdpPacket(new JavaPacketReader(packetBuffer.slice(0)));
+        packetBuffer = new Uint8Array(0);
+        packetFinalLength = -1;
+        DefragPacket(data.readRemainingBytes());
+        return;
+    }
+}
+
+function SendPacket(data){
+    if(sock != null){
+        sock.send(intToBytes(data.length));
+        var packetsToSend = data.length / 8192 + 1;
+        for(var i = 0; i < packetsToSend; i++){
+            var index = i*8192;
+            sock.send(data.slice(index, Math.min(index + 8192, data.length)).buffer);
+        }
+    }
+}
+
+function array8Concat(...arrays) {
+    return arrayConcat(Uint8Array, arrays);
+}
+
+function array8Concat2(array1, array2) {
+    return arrayConcat(Uint8Array, array1, array2);
+}
+
+function arrayConcat(resultConstructor, ...arrays) {
+    let totalLength = 0;
+    for (let arr of arrays) {
+        totalLength += arr.length;
+    }
+    let result = new resultConstructor(totalLength);
+    let offset = 0;
+    for (let arr of arrays) {
+        result.set(arr, offset);
+        offset += arr.length;
+    }
+    return result;
 }

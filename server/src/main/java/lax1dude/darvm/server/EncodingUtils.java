@@ -30,8 +30,8 @@ public class EncodingUtils {
             (byte)value};
     }
     
-    public static int bytesToInt(byte[] in) {
-        return (in[0] << 24) | (in[1] << 16) | (in[2] << 8) | (in[3]);
+    public static int bytesToInt(byte[] yigg) {
+        return (Byte.toUnsignedInt(yigg[0]) << 24) | (Byte.toUnsignedInt(yigg[1]) << 16) | (Byte.toUnsignedInt(yigg[2]) << 8) | (Byte.toUnsignedInt(yigg[3]));
     }
     
 }

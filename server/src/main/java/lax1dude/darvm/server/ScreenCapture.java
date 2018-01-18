@@ -24,12 +24,14 @@ import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.zip.GZIPOutputStream;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import org.apache.commons.lang3.ArrayUtils;
 
 /**
  *
@@ -53,8 +55,8 @@ public class ScreenCapture {
     }
 
     public static byte[] getScreenSize() {
-        screen = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-                 //new Rectangle(0,0,1024,768); //benchmarking
+        screen = //new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+                 new Rectangle(0,0,1024,768); //benchmarking
         byte[] sizedata = new byte[8];
         byte[] w = EncodingUtils.intToBytes(screen.width);
         byte[] h = EncodingUtils.intToBytes(screen.height);
@@ -71,7 +73,7 @@ public class ScreenCapture {
     
     public static void captureScreen() {
         //bufferA = ThreadedScreenshotSystem.captureThreadedScreenshot(screen.width, screen.height);
-        bufferA = DarVMServer.robot.createScreenCapture(screen);
+        bufferA = DarVMServer.robot.getBufferedImage(0,0,screen.width,screen.height);
     }
     
     public static BufferedImage cloneBuffer(BufferedImage buffer){
@@ -83,9 +85,11 @@ public class ScreenCapture {
     
     public static byte[] getFullUpdate() throws IOException {
         byte[] out = bufferedImageToByteArray(bufferA);
-        bufferB = cloneBuffer(bufferA); //bufferB represents client state
+        bufferB = bufferA; //bufferB represents client state
         return out;
     }
+    
+    public static final int tolerance = 128;
     
     public static byte[] getUpdatedPixels() throws IOException {
         int w = bufferA.getWidth();
@@ -94,37 +98,75 @@ public class ScreenCapture {
         WritableRaster rasterB = bufferB.getRaster();
         int[] rasterpixelA = new int[3];
         int[] rasterpixelB = new int[3];
-        BufferedImage out = new BufferedImage(w, h, ColorSpace.TYPE_RGB);
-        WritableRaster rasterO = out.getRaster();
-        int pixels = (w*h);
-        byte[] maskout = new byte[(pixels/8) + ((pixels%8>0?1:0))];
-        byte[] bitmasks = new byte[]{(byte)1,(byte)2,(byte)4,(byte)8,(byte)16,(byte)32,(byte)64,(byte)128,(byte)256};
+        //BufferedImage out = new BufferedImage(w, h, ColorSpace.TYPE_RGB);
+        //WritableRaster rasterO = out.getRaster();
         boolean screenchanged = false;
+        rect[] changedSections = new rect[0];
+        System.out.println("comparing");
         for(int x = 0; x < w; x++){
             for(int y = 0; y < h; y++){
                 rasterA.getPixel(x, y, rasterpixelA);
                 rasterB.getPixel(x, y, rasterpixelB);
                 if(rasterpixelA[0] != rasterpixelB[0] || rasterpixelA[1] != rasterpixelB[1] || rasterpixelA[2] != rasterpixelB[2]){
-                    rasterO.setPixel(x, y, rasterpixelA);
-                    rasterB.setPixel(x, y, rasterpixelA);
-                    int pixelIndex = (x * h + y);
-                    maskout[pixelIndex / 8] |= bitmasks[pixelIndex % 8];
+                    boolean flag = false;
+                    for(int i = 0; i < changedSections.length; i++) {
+                        rect r = changedSections[i];
+                        if(r.x1 - x > tolerance || r.y1 - y > tolerance || x - r.x2 > tolerance || y - r.y1 > tolerance){
+                            continue;
+                        }else{
+                            r.x1 = Math.min(x, r.x1);
+                            r.y1 = Math.min(y, r.y1);
+                            r.x2 = Math.max(x, r.x2);
+                            r.y2 = Math.max(y, r.y2);
+                            flag = true;
+                            break;
+                        }
+                    }
+                    
+                    if(!flag){
+                        rect r = new rect();
+                        r.x1 = x;
+                        r.x2 = x;
+                        r.y1 = y;
+                        r.y2 = y;
+                        changedSections = ArrayUtils.add(changedSections, r);
+                    }
+                    
                     screenchanged = true;
                 }
             }
         }
         
+        System.out.println("exporting");
+        
+        bufferB = bufferA;
+        
         if(!screenchanged) return null;
         
-        ByteArrayOutputStream yee  = new ByteArrayOutputStream();
-        GZIPOutputStream bao = new GZIPOutputStream(yee);
-        bao.write(EncodingUtils.intToBytes(maskout.length));
-        bao.write(maskout);
-        byte[] jpeg = bufferedImageToByteArray(out);
-        bao.write(EncodingUtils.intToBytes(jpeg.length));
-        bao.write(jpeg);
-        bao.flush(); bao.close();
-        return yee.toByteArray();
+        //for(int i = 0; i < changedSections.length; i++) {
+        //    System.out.println("rect: "+changedSections[i].x1+" "+changedSections[i].y1+" "+changedSections[i].x2+" "+changedSections[i].y2);
+        //}
+        
+        ByteArrayOutputStream bao = new ByteArrayOutputStream();
+        bao.write(EncodingUtils.intToBytes(changedSections.length));
+        for(int i = 0; i < changedSections.length; i++) {
+            rect r = changedSections[i];
+            bao.write(EncodingUtils.intToBytes(r.x1));
+            bao.write(EncodingUtils.intToBytes(r.y1));
+            byte[] data = bufferedImageToByteArray(bufferA.getSubimage(r.x1, r.y1, r.x2 - r.x1 + 1, r.y2 - r.y1 + 1));
+            bao.write(EncodingUtils.intToBytes(data.length));
+            bao.write(data);
+        }
+        bao.close();
+        System.out.println("sending");
+        return bao.toByteArray();
+    }
+    
+    static class rect{
+        int x1;
+        int y1;
+        int x2;
+        int y2;
     }
     
     public static byte[] bufferedImageToByteArray(BufferedImage yee) throws IOException{

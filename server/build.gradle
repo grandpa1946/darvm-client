@@ -7,10 +7,21 @@ if (!hasProperty('mainClass')) {
     ext.mainClass = 'lax1dude.darvm.server.DarVMServer'
 }
 
+
+//create a single Jar with all dependencies
+task fatJar(type: Jar) {
+	manifest {
+        attributes 'Main-Class': 'lax1dude.darvm.server.DarVMServer'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    
+    compile 'org.apache.commons:commons-lang3:3.0'
 }
