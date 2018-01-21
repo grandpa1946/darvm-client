@@ -116,6 +116,7 @@ public class WSDarVMServer extends WebSocketServer {
 
     @Override
     protected boolean onConnect(SelectionKey key) {
+        connected = this.connections().size() > 0;
         return !connected;
     }
 
@@ -174,19 +175,19 @@ public class WSDarVMServer extends WebSocketServer {
                     break;
                 case DARVM_PACKET_MOUSE_MIDDLE_DOWN:
                     l("recieved DARVM_PACKET_MOUSE_MIDDLE_DOWN");
-                    robot.mousePress(InputEvent.BUTTON3_MASK);
+                    robot.mousePress(InputEvent.BUTTON2_MASK);
                     break;
                 case DARVM_PACKET_MOUSE_MIDDLE_UP:
                     l("recieved DARVM_PACKET_MOUSE_MIDDLE_UP");
-                    robot.mouseRelease(InputEvent.BUTTON3_MASK);
+                    robot.mouseRelease(InputEvent.BUTTON2_MASK);
                     break;
                 case DARVM_PACKET_MOUSE_RIGHT_DOWN:
                     l("recieved DARVM_PACKET_MOUSE_RIGHT_DOWN");
-                    robot.mousePress(InputEvent.BUTTON2_MASK);
+                    robot.mousePress(InputEvent.BUTTON3_MASK);
                     break;
                 case DARVM_PACKET_MOUSE_RIGHT_UP:
                     l("recieved DARVM_PACKET_MOUSE_RIGHT_UP");
-                    robot.mouseRelease(InputEvent.BUTTON2_MASK);
+                    robot.mouseRelease(InputEvent.BUTTON3_MASK);
                     break;
                 case DARVM_PACKET_MOUSE_SCROLL_DOWN:
                     l("recieved DARVM_PACKET_MOUSE_SCROLL_DOWN");

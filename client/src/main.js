@@ -39,30 +39,38 @@ $(function(){
     preCanvas = document.createElement("canvas");
     
     canvile.on('mousedown',function(event){
-        switch(event.button){
-            case 0:
-                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_LEFT_DOWN]));
-                break;
-            case 2:
-                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_MIDDLE_DOWN]));
-                break;
-            case 1:
-                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_DOWN]));
-                break;
+        if(isRCTRLDown){
+            SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_DOWN]));
+        }else{
+            switch(event.button){
+                case 0:
+                    SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_LEFT_DOWN]));
+                    break;
+                case 1:
+                    SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_MIDDLE_DOWN]));
+                    break;
+                case 2:
+                    SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_DOWN]));
+                    break;
+            }
         }
     });
     
     canvile.on('mouseup',function(event){
-        switch(event.button){
-            case 0:
-                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_LEFT_UP]));
-                break;
-            case 2:
-                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_MIDDLE_UP]));
-                break;
-            case 1:
-                SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_UP]));
-                break;
+        if(isRCTRLDown){
+            SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_UP]));
+        }else{
+            switch(event.button){
+                case 0:
+                    SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_LEFT_UP]));
+                    break;
+                case 1:
+                    SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_MIDDLE_UP]));
+                    break;
+                case 2:
+                    SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_UP]));
+                    break;
+            }
         }
     });
     
@@ -96,23 +104,33 @@ $(function(){
         fsState = yee;
     }, 500);
     
-    var isRSHIFTDown = false;
+    var isRCTRLDown = false;
     
+    var lastfullupdate = 69;
+
     $(document).keydown(function(event){
         var yigg = keyRemaps[event.keyCode];
         if(!yigg){
             yigg = event.keyCode;
         }
-        if((yigg == 17 || yigg == 16) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
-            if(yigg == 17){
-                SendPacket(new Uint8Array([DARVM_PACKET_REQUEST_FULL_SCREEN_UPDATE]));
+        if(yigg >= 112 && yigg <= 123){ //F1 - F12
+            return;
+        }
+        if((yigg == 18 || yigg == 17) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
+            if(yigg == 18){
+                if((new Date()).getTime() - lastfullupdate >= 10000){
+                    SendPacket(new Uint8Array([DARVM_PACKET_REQUEST_FULL_SCREEN_UPDATE]));
+                    lastfullupdate = (new Date()).getTime();
+                }else{
+                    alert("full screen updates take a lot of bandwidth so you're limited to only doing it once every 10 seconds\nstop spamming it you dumbus");
+                }
             }
-            if(yigg == 16){
-                isRSHIFTDown = true;
+            if(yigg == 17){
+                isRCTRLDown = true;
             }
             return;
         }
-        if(isRSHIFTDown){
+        if(isRCTRLDown){
             yigg = numToFunctionKey[yigg];
             if(!yigg){
                 return;
@@ -126,13 +144,16 @@ $(function(){
         if(!yigg){
             yigg = event.keyCode;
         }
-        if((yigg == 17 || yigg == 16) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
-            if(yigg == 16){
-                isRSHIFTDown = false;
+        if(yigg >= 112 && yigg <= 123){ //F1 - F12
+            return;
+        }
+        if((yigg == 18 || yigg == 17) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
+            if(yigg == 17){
+                isRCTRLDown = false;
             }
             return;
         }
-        if(isRSHIFTDown){
+        if(isRCTRLDown){
             yigg = numToFunctionKey[yigg];
             if(!yigg){
                 return;
@@ -361,6 +382,7 @@ function handleRdpPacket(packet){
                 break;
             case DARVM_PACKET_FULL_SCREEN_UPDATE:
                 console.log("recieved DARVM_PACKET_FULL_SCREEN_UPDATE");
+                lastfullupdate = (new Date()).getTime();
                 var len = bytesToInt(packet.readBytes(new Uint8Array(4)));
                 var data = packet.readBytes(new Uint8Array(len));
                 loadImage(data, function(){
@@ -425,7 +447,7 @@ function DefragFullPacket(data){
 }
 
 function SendPacket(data){
-    if(sock != null){
+    if(sock != null && rdpconnected){
         //sock.send(intToBytes(data.length));
         //var packetsToSend = data.length / 8192 + 1;
         //for(var i = 0; i < packetsToSend; i++){
