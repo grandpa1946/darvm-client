@@ -8,6 +8,6 @@
     "ws": "3.3.3"
   },
   "scripts": {
-    "start": "node src/main.js"
+    "start": "node src\/main_wsdarvmserver.js"
   }
 }

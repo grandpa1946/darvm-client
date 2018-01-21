@@ -4,14 +4,14 @@ sourceCompatibility = '1.8'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 if (!hasProperty('mainClass')) {
-    ext.mainClass = 'lax1dude.darvm.server.DarVMServer'
+    ext.mainClass = 'lax1dude.darvm.server.WSDarVMServer'
 }
 
 
 //create a single Jar with all dependencies
 task fatJar(type: Jar) {
 	manifest {
-        attributes 'Main-Class': 'lax1dude.darvm.server.DarVMServer'
+        attributes 'Main-Class': 'lax1dude.darvm.server.WSDarVMServer'
     }
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
@@ -24,4 +24,5 @@ repositories {
 
 dependencies {
     compile 'org.apache.commons:commons-lang3:3.0'
+    compile "org.java-websocket:Java-WebSocket:1.3.7"
 }

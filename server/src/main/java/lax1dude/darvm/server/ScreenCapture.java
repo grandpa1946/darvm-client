@@ -18,14 +18,11 @@ package lax1dude.darvm.server;
 
 import java.awt.Rectangle;
 import java.awt.Toolkit;
-import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
 import java.awt.image.ColorModel;
 import java.awt.image.WritableRaster;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.zip.GZIPOutputStream;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
@@ -55,8 +52,8 @@ public class ScreenCapture {
     }
 
     public static byte[] getScreenSize() {
-        screen = //new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
-                 new Rectangle(0,0,1024,768); //benchmarking
+        screen = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
+                 //new Rectangle(0,0,1024,768); //benchmarking
         byte[] sizedata = new byte[8];
         byte[] w = EncodingUtils.intToBytes(screen.width);
         byte[] h = EncodingUtils.intToBytes(screen.height);
@@ -102,7 +99,7 @@ public class ScreenCapture {
         //WritableRaster rasterO = out.getRaster();
         boolean screenchanged = false;
         rect[] changedSections = new rect[0];
-        System.out.println("comparing");
+        //System.out.println("comparing");
         for(int x = 0; x < w; x++){
             for(int y = 0; y < h; y++){
                 rasterA.getPixel(x, y, rasterpixelA);
@@ -137,7 +134,7 @@ public class ScreenCapture {
             }
         }
         
-        System.out.println("exporting");
+        //System.out.println("exporting");
         
         bufferB = bufferA;
         
@@ -158,7 +155,7 @@ public class ScreenCapture {
             bao.write(data);
         }
         bao.close();
-        System.out.println("sending");
+        //System.out.println("sending");
         return bao.toByteArray();
     }
     

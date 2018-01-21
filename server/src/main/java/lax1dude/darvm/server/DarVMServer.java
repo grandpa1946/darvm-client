@@ -55,6 +55,8 @@ public class DarVMServer {
     private static final AtomicLong lastPing = new AtomicLong(0L);
     private static Socket sockster = null;
     
+    private static Thread handler;
+    
     public static final DirectRobot robot;
     
     static{
@@ -100,6 +102,9 @@ public class DarVMServer {
                             }
                             Thread.sleep(5000L);
                         }
+                    }
+                    if(handler.isAlive()){
+                        handler.stop();
                     }
                 }catch(Throwable t){
                     t.printStackTrace();
@@ -147,7 +152,7 @@ public class DarVMServer {
         
         while (true) {
             sockster = server.accept();
-            Thread handler = new Thread(() -> {
+            handler = new Thread(() -> {
                 l("recieving connection from "+sockster.getRemoteSocketAddress().toString());
                 lastPing.set(System.currentTimeMillis());
                 try{

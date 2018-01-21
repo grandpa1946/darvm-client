@@ -73,19 +73,72 @@ $(function(){
     });
     
     canvile.on('mousewheel',function(event){
-        if(event.wheelDelta > 0){
+        if(event.originalEvent.wheelDelta > 0){
             SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_SCROLL_UP]));
-        }else if(event.wheelDelta < 0){
+        }else if(event.originalEvent.wheelDelta < 0){
             SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_SCROLL_DOWN]));
         }
     });
+   
+    var fsState = false;
     
-    $(document).on('keydown',function(event){
-        SendPacket(array8Concat2(new Uint8Array([DARVM_PACKET_KEYBOARD_KEY_DOWN]), intToBytes(event.code)));
+    setInterval(function(){
+        var yee = (5 >= outerHeight - innerHeight);
+        if(yee != fsState){
+            if(yee){
+                canvile.addClass("fullscreenmode_canvas");
+                canvile.css({transform:"scale("+(window.innerWidth / screen_width)+","+(window.innerHeight / screen_height)+")"});
+            }else{
+                canvile.removeClass("fullscreenmode_canvas");
+                canvile.css({transform:"scale(1)"});
+            }
+        }
+        fsState = yee;
+    }, 500);
+    
+    var isRSHIFTDown = false;
+    
+    $(document).keydown(function(event){
+        var yigg = keyRemaps[event.keyCode];
+        if(!yigg){
+            yigg = event.keyCode;
+        }
+        if((yigg == 17 || yigg == 16) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
+            if(yigg == 17){
+                SendPacket(new Uint8Array([DARVM_PACKET_REQUEST_FULL_SCREEN_UPDATE]));
+            }
+            if(yigg == 16){
+                isRSHIFTDown = true;
+            }
+            return;
+        }
+        if(isRSHIFTDown){
+            yigg = numToFunctionKey[yigg];
+            if(!yigg){
+                return;
+            }
+        }
+        SendPacket(array8Concat2(new Uint8Array([DARVM_PACKET_KEYBOARD_KEY_DOWN]), intToBytes(yigg)));
     });
     
-    $(document).on('keyup',function(event){
-        SendPacket(array8Concat2(new Uint8Array([DARVM_PACKET_KEYBOARD_KEY_UP]), intToBytes(event.code)));
+    $(document).keyup(function(event){
+        var yigg = keyRemaps[event.keyCode];
+        if(!yigg){
+            yigg = event.keyCode;
+        }
+        if((yigg == 17 || yigg == 16) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
+            if(yigg == 16){
+                isRSHIFTDown = false;
+            }
+            return;
+        }
+        if(isRSHIFTDown){
+            yigg = numToFunctionKey[yigg];
+            if(!yigg){
+                return;
+            }
+        }
+        SendPacket(array8Concat2(new Uint8Array([DARVM_PACKET_KEYBOARD_KEY_UP]), intToBytes(yigg)));
     });
     
     screenCanvasContext = screenCanvas.getContext("2d");
@@ -161,7 +214,8 @@ JavaPacketReader.prototype.readRemainingBytes = function(){
 
 function onSocketMessage(event){
     if(rdpconnected){
-        DefragPacket(new Uint8Array(event.data));
+        //DefragPacket(new Uint8Array(event.data));
+        handleRdpPacket(new JavaPacketReader(new Uint8Array(event.data)));
     }else{
         var json = JSON.parse(event.data);
         if(!authenticated){ //recieve vm list
@@ -219,18 +273,18 @@ function onSocketDisconnect(event){
 
 var lastping = 0;
 
-setInterval(function(){
-    if(rdpconnected){
-        SendPacket(new Uint8Array([DARVM_PACKET_PING]));
-        if(lastping - (new Date()).getTime() > 15000){
-            console.log("timed out");
-            sock.close();
-        }
-    }
-}, 5000);
+//setInterval(function(){
+//    if(rdpconnected){
+//        SendPacket(new Uint8Array([DARVM_PACKET_PING]));
+//        if(lastping - (new Date()).getTime() > 15000){
+//            console.log("timed out");
+//            sock.close();
+//        }
+//    }
+//}, 5000);
 
-const DARVM_PACKET_PING                        = 0;  //ping packet
-const DARVM_PACKET_PONG                        = 1;  //pong packet
+//const DARVM_PACKET_PING                        = 0;  //ping packet
+//const DARVM_PACKET_PONG                        = 1;  //pong packet
 const DARVM_PACKET_STREAM_INFORMATION          = 2;  //contains screen width and height, sent on connect
 const DARVM_PACKET_SCREEN_UPDATES              = 4;  //updates changed pixels on the screen
 const DARVM_PACKET_FULL_SCREEN_UPDATE          = 5;  //provides update to entire screen
@@ -274,14 +328,14 @@ function handleRdpPacket(packet){
     try{
         var packettype = packet.readByte();
         switch(packettype){
-            case DARVM_PACKET_PING:
-                console.log("recieved DARVM_PACKET_PING");
-                SendPacket(new Uint8Array([DARVM_PACKET_PONG]));
-                break;
-            case DARVM_PACKET_PONG:
-                console.log("recieved DARVM_PACKET_PONG");
-                lastping = (new Date()).getTime();
-                break;
+            //case DARVM_PACKET_PING:
+            //    console.log("recieved DARVM_PACKET_PING");
+            //    SendPacket(new Uint8Array([DARVM_PACKET_PONG]));
+            //    break;
+            //case DARVM_PACKET_PONG:
+            //    console.log("recieved DARVM_PACKET_PONG");
+            //    lastping = (new Date()).getTime();
+            //    break;
             case DARVM_PACKET_STREAM_INFORMATION:
                 console.log("recieved DARVM_PACKET_STREAM_INFORMATION");
                 screen_width  = bytesToInt(packet.readBytes(new Uint8Array(4)));
@@ -372,12 +426,13 @@ function DefragFullPacket(data){
 
 function SendPacket(data){
     if(sock != null){
-        sock.send(intToBytes(data.length));
-        var packetsToSend = data.length / 8192 + 1;
-        for(var i = 0; i < packetsToSend; i++){
-            var index = i*8192;
-            sock.send(data.slice(index, Math.min(index + 8192, data.length)).buffer);
-        }
+        //sock.send(intToBytes(data.length));
+        //var packetsToSend = data.length / 8192 + 1;
+        //for(var i = 0; i < packetsToSend; i++){
+       //     var index = i*8192;
+        //    sock.send(data.slice(index, Math.min(index + 8192, data.length)).buffer);
+        //}
+        sock.send(data);
     }
 }
 
