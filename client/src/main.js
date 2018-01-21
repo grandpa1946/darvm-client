@@ -28,6 +28,8 @@ var preCanvas = null;
 var screenCanvasContext = null;
 var preCanvasContext = null;
 
+var ctrlClicking = null;
+
 $(function(){
     
     $("#ip").keydown(testValidConnect);
@@ -38,8 +40,10 @@ $(function(){
     screenCanvas = canvile[0];
     preCanvas = document.createElement("canvas");
     
+    ctrlClicking = $("#enable-ctrlclick");
+    
     canvile.on('mousedown',function(event){
-        if(isRCTRLDown){
+        if(isCTRLDown && ctrlClicking.is(":checked")){
             SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_DOWN]));
         }else{
             switch(event.button){
@@ -57,7 +61,7 @@ $(function(){
     });
     
     canvile.on('mouseup',function(event){
-        if(isRCTRLDown){
+        if(isCTRLDown && ctrlClicking.is(":checked")){
             SendPacket(new Uint8Array([DARVM_PACKET_MOUSE_RIGHT_UP]));
         }else{
             switch(event.button){
@@ -106,6 +110,8 @@ $(function(){
     
     var isRCTRLDown = false;
     
+    var isCTRLDown = false;
+    
     var lastfullupdate = 69;
 
     $(document).keydown(function(event){
@@ -115,6 +121,9 @@ $(function(){
         }
         if(yigg >= 112 && yigg <= 123){ //F1 - F12
             return;
+        }
+        if(yigg == 17){
+            isCTRLDown = true;
         }
         if((yigg == 18 || yigg == 17) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
             if(yigg == 18){
@@ -146,6 +155,9 @@ $(function(){
         }
         if(yigg >= 112 && yigg <= 123){ //F1 - F12
             return;
+        }
+        if(yigg == 17){
+            isCTRLDown = false;
         }
         if((yigg == 18 || yigg == 17) && (event.originalEvent.location == 2 || event.originalEvent.keyLocation == 2)){
             if(yigg == 17){
